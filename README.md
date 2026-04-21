@@ -1,54 +1,63 @@
-# 🌱 U.S. Energy Transition Dashboard
+# Energy Transition Predictor
 
-A Python data-visualisation tool that tracks U.S. energy production trends across **Coal, Natural Gas, Solar, and Wind** — and generates a **6-month AI-powered forecast** using linear regression.
+A Python tool that fetches live U.S. energy data from the EIA Open Data API
+and generates a 2x2 dashboard with a 6-month AI forecast for Coal, Natural Gas,
+Solar, and Wind energy sources.
 
-Built for policy researchers and data analysts at the [Sustainable Development Policy Institute (SDPI)](https://sdpi.org).
+No CSV files. No manual downloads. Just run the script and the data comes to you.
+
+Built for policy researchers and data analysts at the Sustainable Development Policy Institute (SDPI).
 
 ---
 
-## 📊 Output Preview
+## Output
 
-> A 2 × 2 dashboard exported as a high-resolution PNG (300 dpi), ready for reports and presentations.
+A 2x2 chart exported as a high-resolution PNG (300 dpi), ready for reports and presentations.
 
-| Chart | Description |
+| Chart | Unit |
 |---|---|
-| **Coal Production** | Monthly output in Thousand Short Tons |
-| **Natural Gas** | Monthly consumption in Trillion Btu |
-| **Solar Energy** | Monthly generation in Trillion Btu |
-| **Wind Energy** | Monthly generation in Trillion Btu |
+| Coal Production | Thousand Short Tons |
+| Natural Gas | Billion Cubic Feet |
+| Solar Energy | Thousand MWh |
+| Wind Energy | Thousand MWh |
 
-Solid bars = historical actuals · Hatched bars = AI forecast · Shaded region = forecast window
-
----
-
-## 🗂 Project Structure
-
-```
-us-energy-transition-dashboard/
-│
-├── us_energy_transition_dashboard.py   ← main script (this file)
-├── requirements.txt                    ← Python dependencies
-├── README.md                           ← you are here
-│
-├── data/
-│   └── eia_export.csv                  ← place your EIA data export here
-│
-└── output/
-    └── us_energy_transition_dashboard.png   ← generated chart saved here
-```
+Solid bars = historical actuals. Hatched bars = AI forecast. Shaded region = forecast window.
 
 ---
 
-## ⚙️ Setup
+## Step 0 - Get a Free EIA API Key
+
+1. Go to https://www.eia.gov/opendata/register.php
+2. Enter your name and email address
+3. Your API key is emailed to you instantly
+
+---
+
+## Project Structure
+
+```
+energy-transition-predictor/
+|
+|-- energy_transition_predictor.py   <- main script
+|-- requirements.txt                 <- Python dependencies
+|-- README.md                        <- you are here
+|
+|-- output/
+    |-- energy_transition_predictor.png  <- chart saved here after running
+```
+
+---
+
+## Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/us-energy-transition-dashboard.git
-cd us-energy-transition-dashboard
+git clone https://github.com/<your-username>/energy-transition-predictor.git
+cd energy-transition-predictor
 ```
 
-### 2. Create a virtual environment (recommended)
+### 2. Create a virtual environment
 
 ```bash
 python -m venv venv
@@ -64,90 +73,99 @@ pip install -r requirements.txt
 
 ---
 
-##  Usage
+## Set Your API Key
 
-### Option A — Command line
-
-```bash
-python us_energy_transition_dashboard.py --input data/eia_export.csv
-```
-
-Save to a custom output folder:
+Option A - Environment variable (recommended for public GitHub repos):
 
 ```bash
-python us_energy_transition_dashboard.py --input data/eia_export.csv --output results/
+# Windows
+set EIA_API_KEY=your_key_here
+
+# macOS / Linux
+export EIA_API_KEY=your_key_here
 ```
 
-### Option B — Jupyter Notebook / interactive Python
+Option B - Hard-code it for quick local testing. Open the script and change:
 
 ```python
-import pandas as pd
-from us_energy_transition_dashboard import build_dashboard
+API_KEY = os.environ.get("EIA_API_KEY", "PASTE_YOUR_KEY_HERE")
+```
 
-raw_data = pd.read_csv("data/eia_export.csv")
-build_dashboard(raw_data)
+to:
+
+```python
+API_KEY = "your_key_here"
+```
+
+Never commit a real API key to a public GitHub repo. Always use the environment variable for shared code.
+
+---
+
+## Usage
+
+### Run from the terminal
+
+```bash
+python energy_transition_predictor.py
+```
+
+### Use from a Jupyter Notebook
+
+```python
+from energy_transition_predictor import fetch_all, build_predictor
+
+raw_data = fetch_all()
+build_predictor(raw_data)
 ```
 
 ---
 
-## 📋 Data Format
-
-The input CSV (or DataFrame) must contain **at least** these three columns:
-
-| Column | Type | Example |
-
-| `seriesDescription` | string | `"Coal Production"` |
-| `period` | ISO date string | `"2025-10-01"` |
-| `value` | numeric | `44760` |
-
-Data can be exported directly from the **[U.S. EIA Open Data API](https://www.eia.gov/opendata/)**.
-
----
-
-##  How the Forecast Works
-
-1. All available historical data for a source is collected.
-2. A **linear regression** model is fitted on a numeric time-step index.
-3. The model extrapolates **6 months** beyond the last recorded data point.
-4. Forecast bars are rendered with a hatched pattern and a shaded background region to clearly distinguish them from actuals.
-
-> **Note:** Linear regression captures long-run trends but does not model seasonality. For production-grade forecasting consider SARIMA or Prophet.
-
----
-
-## Known Issues Fixed in This Version
-
- Bug , Root Cause ,Fix Applied 
-| Multiple values stacked in one bar | Duplicate rows per period in raw data | `groupby('Date').sum()` before plotting |
-| Bar labels overlapping / invisible | Labels placed at exact bar height | Labels nudged 1.5 % above bar top |
-| Labels clipped at chart top | Y-axis too short | Y-limit extended to 112 % of max value |
-| Bars overlapping each other | String x-labels allow matplotlib duplicates | Integer positions + `set_xticks()` |
-
----
-
-## 📦 Dependencies
+## How It Works
 
 ```
-pandas
-numpy
-matplotlib
-scikit-learn
+EIA Open Data API
+      |
+      v
+fetch_all()        <- pulls live monthly data for all 4 sources
+      |
+      v
+clean()            <- deduplicates revised estimates, sorts oldest to newest
+      |
+      v
+forecast()         <- fits LinearRegression on time-step index, projects 6 months ahead
+      |
+      v
+draw_chart()       <- plots historical and forecast bars with labels
+      |
+      v
+build_predictor()  <- assembles 2x2 figure, saves 300-dpi PNG
 ```
 
-See `requirements.txt` for pinned versions.
+---
+
+## Dependencies
+
+| Package | Purpose |
+|---|---|
+| requests | Live HTTP calls to the EIA API |
+| pandas | Data wrangling and date handling |
+| numpy | Numeric arrays for regression |
+| matplotlib | Chart rendering |
+| scikit-learn | Linear regression forecast model |
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
-## 📄 License
+## Contributing
 
-MIT License — feel free to use, modify, and share with attribution.
-
----
-
-## 🤝 Contributing
-
-Pull requests are welcome! If you have ideas for adding more energy sources, improving the forecast model, or adding interactivity (Plotly / Dash), please open an issue first to discuss.
+Pull requests are welcome. If you want to add more energy sources, improve the
+forecast model, or add interactivity, please open an issue first to discuss.
 
 ---
 
-*Made with 🐍 Python · 📊 Matplotlib · 🤖 scikit-learn*
+## License
+
+MIT License - free to use, modify, and share with attribution.
